@@ -1,9 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <linux/types.h>
+
+#include <private/android_filesystem_config.h>
 
 #include "binder.h"
 #include "test_server.h"
+
+#if 1
+#define ALOGI(x...) fprintf(stderr, "test_server.c: " x)
+#define ALOGE(x...) fprintf(stderr, "test_server.c: " x)
+#else
+#define ALOGI(x...)
+#define ALOGE(x...)
+#endif
+
 
 int svcmgr_publish(struct binder_state *bs, uint32_t target, const char *name, void *ptr)
 {
@@ -17,8 +30,10 @@ int svcmgr_publish(struct binder_state *bs, uint32_t target, const char *name, v
 	bio_put_string16_x(&msg, name);
 	bio_put_obj(&msg, ptr);
 
-	if (binder_call(bs, &msg, &reply, target, SVC_MGR_ADD_SERVICE))
+	if (binder_call(bs, &msg, &reply, target, SVC_MGR_ADD_SERVICE)) {
+		printf("test_server.c binder_call failed : %s !", strerror(errno));
 		return -1;
+	}
 
 	status = bio_get_uint32(&reply);
 	binder_done(bs, &msg, &reply);
@@ -114,22 +129,22 @@ int main(int argc, char **argv)
 	}
 
 	/* add service */
-	ret = svcmgr_publish(bs, svcmgr, "hello", "123");
-	if (!ret) {
+	ret = svcmgr_publish(bs, svcmgr, "hello", (void *)"123");
+	if (ret) {
 		fprintf(stderr, "failed to publish hello sevice!\n");
 		return -1;
 	}
-	ret svcmgr_publish(bs, svcmgr, "goodbye", "123");
-	if (!ret) {
+	ret = svcmgr_publish(bs, svcmgr, "goodbye", (void *)"124");
+	if (ret) {
 		fprintf(stderr, "failed to publish goodbye service!\n");
-		return -1;
+		//return -1;
 	}
 
 	#if 0
 	while(1)
 	{
 		/* read data */
-		/* parse data, and process */
+		/* parse data, and process data */
 		/* reply */
 	}
 	#endif

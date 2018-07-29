@@ -1,19 +1,29 @@
-
+#include <string.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/mman.h>
+#include <stdbool.h>
+#include <linux/types.h>
 
 #include "binder.h"
 
 #define MAX_BIO_SIZE (1 << 30)
 
-#define TRACE 1
+#define TRACE 0
 
 #define LOG_TAG "Binder"
-#include <cutils/log.h>
+
+#if TRACE
+#define ALOGI(x...) fprintf(stderr, "binder.c: " x)
+#define ALOGE(x...) fprintf(stderr, "binder.c: " x)
+#else
+#define ALOGI(x...) 
+#define ALOGE(x...)
+#endif
 
 void bio_init_from_txn(struct binder_io *io, struct binder_transaction_data *txn);
 
@@ -101,7 +111,7 @@ struct binder_state *binder_open(size_t mapsize)
 
 	bs->fd = open("/dev/binder", O_RDWR);
 	if (bs->fd < 0) {
-		fprintf(stderr, "binder: cannot open device : %s \n", strerror(errrno));
+		fprintf(stderr, "binder: cannot open device : %s \n", strerror(errno));
 		goto fail_open;
 	}
 
@@ -268,8 +278,8 @@ int binder_parse(struct binder_state * bs,struct binder_io * bio,
 			}
 
 			case BR_DEAD_BINDER: {
-				struct binder_death *death = (struct binder_death *)(uintptr_t) *(binder_uintprt_t *)ptr;
-				ptr += sizeof(binder_uintptr_t);
+				struct binder_death *death = (struct binder_death *)(uintptr_t) *(binder_uintptr_t *)ptr;
+				ptr += sizeof(binder_uintptr_t);                                        
 				death->func(bs, death->ptr);
 				break;
 
@@ -325,9 +335,21 @@ int binder_call(struct binder_state *bs, struct binder_io *msg,
 {
 	int res;
 	struct binder_write_read bwr;
+	
 	struct {
-
+		uint32_t cmd;
+		//struct binder_transaciton_data txn;
+		struct binder_transaction_data txn; 
+		//struct binder_transaction_data txn;
 	} __attribute__((packed)) writebuf;
+
+	/*
+	struct {        
+		uint32_t cmd;    
+		struct binder_transaction_data txn;    
+	} __attribute__((packed)) writebuf;
+	*/
+
 	unsigned readbuf[32];
 
 	if (msg->flags & BIO_F_OVERFLOW) {
@@ -348,12 +370,13 @@ int binder_call(struct binder_state *bs, struct binder_io *msg,
 	bwr.write_consumed = 0;
 	bwr.write_buffer = (uintptr_t) &writebuf;
 
-	hexdump(msg->data0, msg->data - msg->data0);
+	//hexdump(msg->data0, msg->data - msg->data0);
 	for (;;) {
 		bwr.read_size = sizeof(readbuf);
 		bwr.read_consumed = 0;
 		bwr.read_buffer = (uintptr_t) readbuf;
 
+		// 会等待server数据的返回后，继续处理
 		res = ioctl(bs->fd, BINDER_WRITE_READ, &bwr);
 		if (res < 0) {
 			fprintf(stderr, "binder_call : ioctl failed %s !\n", strerror(errno));
