@@ -256,6 +256,8 @@ int do_add_service(struct binder_state *bs, const uint16_t *s, size_t len,
 		svclist = si;
 	}
 
+	ALOGI("\r\n add_service('%s') hander = %d.\r\n", str8(s, len), handle);
+
 	binder_acquire(bs, handle);
 	binder_link_to_death(bs, handle, &si->death);
 
