@@ -165,6 +165,7 @@ int main(int argc, char **argv)
 	helloHandle = handle;
 	fprintf(stderr, "hello server : helloHandler = %d.\n", helloHandle);
 
+#if 0
 	/* get service */
 	handle = svcmgr_lookup(bs, svcmgr, (char *)"goodbye");
 	if (!handle) 
@@ -174,6 +175,9 @@ int main(int argc, char **argv)
 	}
 	goodbyeHandle = handle;
 	fprintf(stderr, "goodbye server : goodbyeHandle = %d.\n", goodbyeHandle);
+#endif
+
+	// handle value : get service befor/after 
 
 	/* send data to server */
 	if (!strcmp(argv[1], "hello")) 
@@ -207,8 +211,9 @@ int main(int argc, char **argv)
 		fprintf(stderr, "%s <hello|goodbye> ,", argv[0]);
 		fprintf(stderr, "or %s <hello|goodbye> <name> \n", argv[0]);
 	}
-	
-	binder_release(bs, goodbyeHandle);
+
+	binder_release(bs, helloHandle);
+	//binder_release(bs, goodbyeHandle);
 	
 	return 0;
 }

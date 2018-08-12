@@ -46,6 +46,13 @@ typedef int (*binder_handler)(struct binder_state *bs,
                               struct binder_io *msg,
                               struct binder_io *reply);
 
+// struct binder_state *bs, binder_handler func;
+struct binder_thread_desc {
+	struct binder_state *bs;
+	binder_handler func;
+};
+
+
 struct binder_state *binder_open(size_t mapsize);
 void binder_close(struct binder_state *bs);
 
@@ -69,6 +76,8 @@ void binder_acquire(struct binder_state *bs, uint32_t target);
 void binder_release(struct binder_state *bs, uint32_t target);
 
 void binder_link_to_death(struct binder_state *bs, uint32_t target, struct binder_death *death);
+
+void binder_set_maxthreads(struct binder_state *bs, int maxThreads);
 
 void binder_loop(struct binder_state *bs, binder_handler func);
 

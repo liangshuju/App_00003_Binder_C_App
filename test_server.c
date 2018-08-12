@@ -234,7 +234,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "failed to publish hello sevice!\n");
 		return -1;
 	}
-	ret = svcmgr_publish(bs, svcmgr, "goodbye", (void *)124);
+	ret = svcmgr_publish(bs, svcmgr, "goodbye", (void *)124); // must common and test_server_handle
 	if (ret) {
 		fprintf(stderr, "failed to publish goodbye service!\n");
 		return -1;
@@ -246,11 +246,13 @@ int main(int argc, char **argv)
 		fprintf(stderr, "failed to publish hello sevice!\n");
 		return -1;
 	}
+	#if 1 // mask goodbye server analyze data
 	ret = svcmgr_publish(bs, svcmgr, "goodbye", goodbye_service_handle);
 	if (ret) {
 		fprintf(stderr, "failed to publish goodbye service!\n");
 		return -1;
 	}
+	#endif
 	#endif
 
 	#if 0
@@ -261,6 +263,9 @@ int main(int argc, char **argv)
 		/* reply */
 	}
 	#endif
+
+	binder_set_maxthreads(bs, 10);
+	
 
 	binder_loop(bs, test_server_handle);
 
