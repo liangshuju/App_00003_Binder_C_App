@@ -10,8 +10,8 @@
 #include "test_server.h"
 
 #if 1
-#define ALOGI(x...) fprintf(stderr, "test_server.c: " x)
-#define ALOGE(x...) fprintf(stderr, "test_server.c: " x)
+#define ALOGI(x...) fprintf(stderr, "binder_c_test_server : " x)
+#define ALOGE(x...) fprintf(stderr, "binder_c_test_server : " x)
 #else
 #define ALOGI(x...)
 #define ALOGE(x...)
@@ -31,7 +31,7 @@ int svcmgr_publish(struct binder_state *bs, uint32_t target, const char *name, v
 	bio_put_obj(&msg, ptr);
 
 	if (binder_call(bs, &msg, &reply, target, SVC_MGR_ADD_SERVICE)) {
-		printf("test_server.c binder_call failed : %s !", strerror(errno));
+		ALOGE("binder_call failed : %s !", strerror(errno));
 		return -1;
 	}
 
@@ -44,13 +44,13 @@ int svcmgr_publish(struct binder_state *bs, uint32_t target, const char *name, v
 void say_hello(void)
 {
 	static int cnt = 0;
-	fprintf(stderr, "say_hello : %d .\n", cnt ++);
+	ALOGI("say_hello : %d .\n", ++ cnt);
 }
 
 int say_hello_to(char *name)
 {
 	static int cnt = 0;
-	fprintf(stderr, "say_hello_to %s : %d .\n", name, cnt++);
+	ALOGI("say_hello_to %s : %d .\n", name, ++ cnt);
 	return cnt;
 }
 
@@ -62,18 +62,29 @@ int hello_service_handle(struct binder_state *bs, struct binder_transaction_data
 	 * 如果要返回结果， 可以把结果放入到reply
 	 */
 
+	/**
+	 * throught 'txn->code', yon can know call different function
+	 *
+	 * when need parameter, you can get from 'msg' 
+	 * 
+	 * when nedd reply result, you can put return reslut to 'reply'
+	 *
+	 ******/
+
 	/***
 	* say_hello
 	* say_hello_to
 	*
 	******/
 
-	uint16_t *s;
-	char name[512];
-	size_t len;
-	uint32_t handle;
-	uint32_t strict_policy;
-	int i;
+	uint16_t *s = NULL;
+	uint16_t *s_iservice_name = NULL;
+	char name[512] = {0};
+	char iservice_name[512] = {0};
+	size_t len = 0;
+	uint32_t handle = 0;
+	uint32_t strict_policy = 0;
+	size_t i = 0;
 
 	// Equivalent to Parcel::enforceInterface(), reading the RPC    
 	// header with the strict mode policy mask and the interface name.    
@@ -88,8 +99,22 @@ int hello_service_handle(struct binder_state *bs, struct binder_transaction_data
 
 		case HELLO_SVC_CMD_SAY_HELLO_TO:
 			/* 从 msg 里面取出字符串 */
+			/* get string for 'msg' */
+			s_iservice_name = bio_get_string16(msg, &len);
+			if (s_iservice_name == NULL)
+			{
+				ALOGE("hello service handle : sayhelle_to get iservice name failed : s_iservice_name = NULL!!\n");
+				return -1;
+			}
+			for (i = 0; i < len; i ++)
+				iservice_name[i] = s_iservice_name[i];
+			iservice_name[i] = '\0';
+			ALOGI("hello service handle : sayhello_to get iservice name = %s.\n", iservice_name);
+			
 			s = bio_get_string16(msg, &len);
-			if (s == NULL) {
+			if (s == NULL) 
+			{
+				ALOGE("hello service handle : sayhelle_to get service name failed : name = NULL!!\n");
 				return -1;
 			}
 			for (i = 0; i < len; i ++) 
@@ -97,9 +122,14 @@ int hello_service_handle(struct binder_state *bs, struct binder_transaction_data
 			name[i] = '\0';
 
 			/* 处理 */
+			/* handler data */
 			i = say_hello_to(name);
 
+			/* compatible java os : you can put no exception '0' */
+			bio_put_uint32(reply, 0);
+			
 			/* 把结果放入 reply */
+			/* put result 'reply' */
 			bio_put_uint32(reply, i);
 
 			break;
@@ -117,13 +147,13 @@ int hello_service_handle(struct binder_state *bs, struct binder_transaction_data
 void say_goodbye(void)
 {
 	static int cnt = 0;
-	fprintf(stderr, "say_goodbye : %d .\n", cnt ++);
+	ALOGI("say_goodbye : %d .\n", ++ cnt);
 }
 
 int say_goodbye_to(char *name)
 {
 	static int cnt = 0;
-	fprintf(stderr, "say_goodbye_to :  %s : %d .\n", name, cnt++);
+	ALOGI("say_goodbye_to :  %s : %d .\n", name, ++ cnt);
 	return cnt;
 }
 
@@ -135,18 +165,31 @@ int goodbye_service_handle(struct binder_state *bs, struct binder_transaction_da
 	 * 如果要返回结果， 可以把结果放入到reply
 	 */
 
+
+	/**
+	 * throught 'txn->code', yon can know call different function
+	 *
+	 * when need parameter, you can get from 'msg' 
+	 * 
+	 * when nedd reply result, you can put return reslut to 'reply'
+	 *
+	 ******/
+	 
+
 	/***
 	* say_hello
 	* say_hello_to
 	*
 	******/
 
-	uint16_t *s;
-	char name[512];
-	size_t len;
-	uint32_t handle;
-	uint32_t strict_policy;
-	int i;
+	uint16_t *s = NULL;
+	uint16_t *s_iservice_name = NULL;
+	char iservice_name[512] = {0};
+	char name[512] = {0};
+	size_t len = 0;
+	uint32_t handle = 0;
+	uint32_t strict_policy = 0;
+	size_t i = 0;
 
 	// Equivalent to Parcel::enforceInterface(), reading the RPC    
 	// header with the strict mode policy mask and the interface name.    
@@ -161,8 +204,22 @@ int goodbye_service_handle(struct binder_state *bs, struct binder_transaction_da
 
 		case GOODBYE_SVC_CMD_SAY_GOODBYE_TO:
 			/* 从 msg 里面取出字符串 */
-			s = bio_get_string16(msg, &len);
-			if (s == NULL) {
+			/* get string form msg */
+			s_iservice_name = bio_get_string16(msg, &len); /* IGoodbyeService */
+			if (s_iservice_name == NULL) 
+			{
+				ALOGE("goodbye service handler saygoodbye_to bio_get_string16 iservice_name error : s_iservice_name = NULL!!\n");
+				return -1;
+			}
+			for (i = 0; i < len; i ++ )
+				iservice_name[i] = s_iservice_name[i];
+			iservice_name[i] = '\0';
+			ALOGI("service handler saygoodbye_to : iservice_name = %s. \n", iservice_name);
+			
+			s = bio_get_string16(msg, &len); /* name */
+			if (s == NULL) 
+			{
+				ALOGE("goodbye service handler saygoodbye_to bio_get_string16 name error : s = NULL!!\n");
 				return -1;
 			}
 			for (i = 0; i < len; i ++) 
@@ -170,9 +227,14 @@ int goodbye_service_handle(struct binder_state *bs, struct binder_transaction_da
 			name[i] = '\0';
 
 			/* 处理 */
+			/* handle data */
 			i = say_goodbye_to(name);
 
+			/* compatible java os : you can put no exception '0' */
+			bio_put_uint32(reply, 0);
+
 			/* 把结果放入 reply */
+			/* put reply data result */
 			bio_put_uint32(reply, i);
 
 			break;
@@ -213,7 +275,8 @@ int test_server_handle(struct binder_state *bs, struct binder_transaction_data *
 }
 
 
-int main(int argc, char **argv)
+//int main(int argc, char **argv)
+int main(void)
 {
 	int fd;
 	struct binder_state *bs;
@@ -223,7 +286,7 @@ int main(int argc, char **argv)
 
 	bs = binder_open(128*1024);
 	if (!bs) {
-		fprintf(stderr, "Failed to binder_open binder driver!\n");
+		ALOGE("Failed to binder_open binder driver!\n");
 		return -1;
 	}
 
@@ -243,13 +306,13 @@ int main(int argc, char **argv)
 	/* add service */
 	ret = svcmgr_publish(bs, svcmgr, "hello", hello_service_handle);
 	if (ret) {
-		fprintf(stderr, "failed to publish hello sevice!\n");
+		ALOGE("failed to publish hello sevice!\n");
 		return -1;
 	}
 	#if 1 // mask goodbye server analyze data
 	ret = svcmgr_publish(bs, svcmgr, "goodbye", goodbye_service_handle);
 	if (ret) {
-		fprintf(stderr, "failed to publish goodbye service!\n");
+		ALOGE("failed to publish goodbye service!\n");
 		return -1;
 	}
 	#endif

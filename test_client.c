@@ -3,12 +3,18 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <linux/types.h>
-
 #include <private/android_filesystem_config.h>
-
 
 #include "binder.h"
 #include "test_server.h"
+
+#if 1
+#define ALOGI(x...) fprintf(stderr, "binder_c_test_client : " x)
+#define ALOGE(x...) fprintf(stderr, "binder_c_test_client : " x)
+#else
+#define ALOGI(x...)
+#define ALOGE(x...)
+#endif
 
 uint32_t svcmgr_lookup(struct binder_state *bs, uint32_t target, const char *name)
 {
@@ -41,17 +47,21 @@ void say_hello(struct binder_state *bs, uint32_t handle)
 	struct binder_io msg, reply;
 
 	/* 1 构造binder_io */
+	/* 1 constructor 'binder_io' */
 	bio_init(&msg, iodata,sizeof(iodata), 4);
 	bio_put_uint32(&msg, 0);   // strict mode header
-
+	bio_put_string16_x(&msg, (char *)HELLO_SERVER_DESCRIPTOR); /* compatible iservice_name */ 
+	
 	/* 2 放入参数 */
+	/* 2 put parameter */
 	
 	/* 3 调用 binder_call */
+	/* 3 you can call 'binder_call' */
 	if (binder_call(bs, &msg, &reply, handle, HELLO_SVC_CMD_SAY_HELLO))
 		return ;
 
 	/* 4 从reply中解析出返回值 */
-
+	/* 4 parse return value form 'reply' */
 
 	binder_done(bs, &msg, &reply);
 }
@@ -60,13 +70,16 @@ int say_hello_to(struct binder_state *bs, uint32_t handle, char *name)
 {
 	unsigned iodata[512/4];
 	struct binder_io msg, reply;
-	int ret;
+	int ret = -1;
 
 	/* 1 构造binder_io */
+	/* 1 constructor 'binder_io' */
 	bio_init(&msg, iodata, sizeof(iodata), 4);
 	bio_put_uint32(&msg, 0); // strict mode header
+	bio_put_string16_x(&msg, (char *)HELLO_SERVER_DESCRIPTOR); /* compatible iservice_name */ 
 
 	/* 2 放入参数 */
+	/* 2 you can put parameter */
 	bio_put_string16_x(&msg, name);
 
 	/* 3 binder_call */
@@ -74,10 +87,20 @@ int say_hello_to(struct binder_state *bs, uint32_t handle, char *name)
 		return 0;
 
 	/* 4 从reply中解析出返回值 */
-	ret = bio_get_uint32(&reply);
+	/* 4 parse return value form 'reply' */
 
+	int java_flag_execption = bio_get_uint32(&reply);
+	if (java_flag_execption) 
+	{
+		ALOGE("sayhell_to get error : java_flag_execption = %d.\n", java_flag_execption);
+		return -1;
+	}
+	else
+	{
+		ret = bio_get_uint32(&reply);
+	}
+	
 	binder_done(bs, &msg, &reply);
-
 	return ret;
 }
 
@@ -87,16 +110,21 @@ void say_goodbye(struct binder_state *bs, uint32_t handle)
 	struct binder_io msg, reply;
 
 	/* 1 构造binder_io */
+	/* 2 constructor 'binder_io' */
 	bio_init(&msg, iodata,sizeof(iodata), 4);
 	bio_put_uint32(&msg, 0);   // strict mode header
+	bio_put_string16_x(&msg, (char *)GOODBYE_SERVICE_DESCRIPTOR); /* compatible iservice_name */ 
 
 	/* 2 放入参数 */
+	/* 2 put parameter */
 
 	/* 3 调用 binder_call */
+	/* 3 call 'binder_call' */
 	if (binder_call(bs, &msg, &reply, handle, GOODBYE_SVC_CMD_SAY_GOODBYE))
 		return ;
 
 	/* 4 从reply中解析出返回值 */
+	/* 4 parse return value form 'reply' */
 
 
 	binder_done(bs, &msg, &reply);
@@ -106,13 +134,16 @@ int say_goodbye_to(struct binder_state *bs, uint32_t handle, char *name)
 {
 	unsigned iodata[512/4];
 	struct binder_io msg, reply;
-	int ret;
+	int ret = 0;
 
 	/* 1 构造binder_io */
+	/* 2 constructor 'binder_io' */
 	bio_init(&msg, iodata, sizeof(iodata), 4);
 	bio_put_uint32(&msg, 0); // strict mode header
+	bio_put_string16_x(&msg, (char *)GOODBYE_SERVICE_DESCRIPTOR); /* compatible iservice_name */ 
 
 	/* 2 放入参数 */
+	/* 2 put parameter */
 	bio_put_string16_x(&msg, name);
 
 	/* 3 binder_call */
@@ -120,8 +151,18 @@ int say_goodbye_to(struct binder_state *bs, uint32_t handle, char *name)
 		return 0;
 
 	/* 4 从reply中解析出返回值 */
-	ret = bio_get_uint32(&reply);
-
+	/* 4 parse return value form 'reply' */
+	int java_flag_execption = bio_get_uint32(&reply);
+	if (java_flag_execption)
+	{
+		ALOGE("saygoodbye_to get java_flag_execption = %d.\n", java_flag_execption);
+		return -1;
+	}
+	else
+	{
+		ret = bio_get_uint32(&reply);
+	}
+	
 	binder_done(bs, &msg, &reply);
 
 	return ret;
@@ -134,24 +175,24 @@ int say_goodbye_to(struct binder_state *bs, uint32_t handle, char *name)
  */
 int main(int argc, char **argv)
 {
-	int fd;
-	struct binder_state *bs;
+	int fd = 0;
+	struct binder_state *bs = NULL;
 	uint32_t svcmgr = BINDER_SERVICE_MANAGER;
-	uint32_t handle;
-	uint32_t helloHandle;
-	uint32_t goodbyeHandle;
-	int ret;
+	uint32_t handle = 0;
+	uint32_t helloHandle = 0;
+	uint32_t goodbyeHandle = 0;
+	int ret = 0;
 
 	if (argc < 2) {
-		fprintf(stderr, "Usage : ");
-		fprintf(stderr, "%s <hello|goodbye> ,", argv[0]);
-		fprintf(stderr, "or %s <hello|goodbye> <name> \n", argv[0]);
+		ALOGE("Usage : ");
+		ALOGE("%s <hello|goodbye> ,", argv[0]);
+		ALOGE("or %s <hello|goodbye> <name> \n", argv[0]);
 		return -1;
 	}
 
 	bs = binder_open(128*1024);
 	if (!bs) {
-		fprintf(stderr, "failed to ope binder driver!\n");
+		ALOGE("failed to ope binder driver!\n");
 		return -1;
 	}
 
@@ -159,22 +200,22 @@ int main(int argc, char **argv)
 	handle = svcmgr_lookup(bs, svcmgr, (char *)"hello");
 	if (!handle) 
 	{
-		fprintf(stderr, "failed to get hello service !\n");
+		ALOGE("failed to get hello service !\n");
 		return -1;
 	}
 	helloHandle = handle;
-	fprintf(stderr, "hello server : helloHandler = %d.\n", helloHandle);
+	//ALOGI("hello client : helloHandler = %d.\n", helloHandle);
 
-#if 0
+#if 1
 	/* get service */
 	handle = svcmgr_lookup(bs, svcmgr, (char *)"goodbye");
 	if (!handle) 
 	{
-		fprintf(stderr, "failed to get hello service !\n");
+		ALOGE("failed to get hello service !\n");
 		return -1;
 	}
 	goodbyeHandle = handle;
-	fprintf(stderr, "goodbye server : goodbyeHandle = %d.\n", goodbyeHandle);
+	//ALOGI("goodbye client : goodbyeHandle = %d.\n", goodbyeHandle);
 #endif
 
 	// handle value : get service befor/after 
@@ -185,11 +226,12 @@ int main(int argc, char **argv)
 		if (argc == 2) 
 		{
 			say_hello(bs, helloHandle);
+			ALOGI("test client call say_hello.\n");
 		} 
 		else if (argc == 3) 
 		{
 			ret = say_hello_to(bs, helloHandle, argv[2]);
-			fprintf(stderr, "get ret of say_hello_to = %d . \n", ret);
+			ALOGI("get return of say_hello_to = %d . \n", ret);
 		}
 	}
 	else if (!strcmp(argv[1], "goodbye"))
@@ -197,19 +239,20 @@ int main(int argc, char **argv)
 		if (argc == 2) 
 		{
 			say_goodbye(bs, goodbyeHandle);
+			ALOGI("test client call say_goodbye.\n");
 		} 
 		else if (argc == 3) 
 		{
 			ret = say_goodbye_to(bs, goodbyeHandle, argv[2]);
-			fprintf(stderr, "get ret of say_hello_to = %d . \n", ret);
+			ALOGI("get return of say_hello_to = %d . \n", ret);
 		}
 	}
 	else
 	{
-		fprintf(stderr, "Usage input error!\n");
-		fprintf(stderr, "Usage : ");
-		fprintf(stderr, "%s <hello|goodbye> ,", argv[0]);
-		fprintf(stderr, "or %s <hello|goodbye> <name> \n", argv[0]);
+		ALOGE("Usage input error!\n");
+		ALOGE("Usage : ");
+		ALOGE("%s <hello|goodbye> ,", argv[0]);
+		ALOGE("or %s <hello|goodbye> <name> \n", argv[0]);
 	}
 
 	binder_release(bs, helloHandle);

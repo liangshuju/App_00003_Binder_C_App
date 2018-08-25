@@ -473,7 +473,7 @@ fail:
 
 void binder_set_maxthreads(struct binder_state *bs, int maxThreads)
 {
-	fprintf(stderr, "binder_set_maxthreads ioctl .\n");
+	//fprintf(stderr, "binder_set_maxthreads ioctl .\n");
 	ioctl(bs->fd, BINDER_SET_MAX_THREADS, &maxThreads);
 }
 
